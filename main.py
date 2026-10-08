@@ -12,7 +12,7 @@ clock = pygame.time.Clock()
 running = True
 dt = 0
 
-track = pygame.image.load("track2.png").convert_alpha()
+track = pygame.image.load("track.png").convert_alpha()
 track = pygame.transform.scale(track, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
 
@@ -120,7 +120,7 @@ class Car:
             self.reward -= 1200
         elif r == g and g == b: #finish line bby
             self.reward += 1000
-        #else: ##############PERHAPS ADD MILESTONES IN YELLOW OR SOME ACROSSE THE TRACK?
+        #else: ##############PERHAPS ADD MILESTONES IN YELLOW ACROSSE THE TRACK?
             #print(f"UNKNOWN: {location_color}")
 
     def update(self):
