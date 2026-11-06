@@ -5,6 +5,8 @@ from random import uniform
 
 SCREEN_WIDTH = 1440
 SCREEN_HEIGHT = 800
+SIMULATION_STEPS = 5
+SIMULATION_SPEED = 3
 
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -34,6 +36,7 @@ class Car:
 
         self.reward = 0
         self.living = True
+        self.lifetime = 0
         self.network = NeuralNetwork()         ##call neural net per car
 
         self.output = np.zeros(2)
@@ -41,7 +44,7 @@ class Car:
 
     def carMovement(self):
         global dt
-        throttle = self.output[0]
+        throttle = max(0.2, self.output[0])
         self.steering = self.output[1]
 
         self.angle += 180 * dt * self.steering * (abs(self.speed) / self.max_speed)
@@ -73,13 +76,13 @@ class Car:
 
     def getInputs(self):
             return [
-                self.sensor(-90, 30),
-                self.sensor(-60, 35 ),
-                self.sensor(-30, 45),
-                self.sensor(0, 65),
-                self.sensor(30, 45),
-                self.sensor(60, 35),
-                self.sensor(90, 30),
+                self.sensor(-90, 100),
+                self.sensor(-60, 120 ),
+                self.sensor(-30, 150),
+                self.sensor(0, 200),
+                self.sensor(30, 150),
+                self.sensor(60, 120),
+                self.sensor(90, 100),
                 self.speed / self.max_speed,
                 self.steering
                 ] 
@@ -107,23 +110,31 @@ class Car:
 
     
     def rewardProgramm(self):
-        location_color = track.get_at((self.rect.x, self.rect.y))
+        location_color = track.get_at((int(self.pos.x), int(self.pos.y)))
         r, g, b, a = location_color
 
         if abs(self.speed) < 1:
-            self.reward -= 1
+            self.reward -= 0.1
 
         if a > 253 and r < 10 and g < 10 and b < 10: #on track
-            self.reward += 0.01
+            self.reward += 0.1
         elif a == 0: #off track
+            #self.reward -= 0.2
             self.living = False 
-            self.reward -= 1200
         elif r == g and g == b: #finish line bby
-            self.reward += 1000
+            self.reward += 0
         #else: ##############PERHAPS ADD MILESTONES IN YELLOW ACROSSE THE TRACK?
             #print(f"UNKNOWN: {location_color}")
 
     def update(self):
+        global dt
+
+        self.lifetime += dt
+
+        if self.lifetime > 30:
+            self.living = False
+            return
+
         inputs = self.getInputs()
 
         self.output = self.network.neuralNet(inputs)
@@ -139,11 +150,12 @@ class Car:
         self.living = True
         self.reward = 0
         self.steering = 0
+        self.lifetime = 0
         self.output = np.zeros(2)
         self.rect.center = self.pos
 
 
-        
+
 
 
 
@@ -235,27 +247,32 @@ while running:
         if event.type == pygame.QUIT:
             running = False
     dt = clock.tick(60) / 1000 # limits FPS to 60
+    dt *= SIMULATION_SPEED / SIMULATION_STEPS
 
 
 
     screen.fill("#3B7A37")
     screen.blit(track, (0, 0))
 
-    for car in cars:
-        if car.living:
-            car.update()
+    for _ in range(SIMULATION_STEPS):
+        for car in cars:
+            if car.living:
+                car.update()
 
+    for car in cars:
         rotated_surface = pygame.transform.rotate(car.surface, car.angle)
         rotated_rect = rotated_surface.get_rect(center=car.rect.center)
         screen.blit(rotated_surface, rotated_rect)
 
 
     if all(not car.living for car in cars):
+        best_reward = max(car.reward for car in cars)
+
         generation += 1 
         cars = geneticElitism(cars)
 
         print(f"generation: {generation}")
-        print(f"highest reward: {cars[0].reward}")
+        print(f"highest reward: {best_reward}")
     
 
 
